@@ -1081,7 +1081,20 @@
 
             drawSvgIcon('wind', 380, 526, 18, '#64748b');
             text(currentLang === 'th' ? 'ความเร็วลม' : 'Wind Speed', 405, 533, 13, '#64748b', '400');
-            text(windVal, 405, 562, 12, '#0f172a', '600');
+            
+            // แยกค่าความเร็วลม และ สถานะการระบายอากาศ ให้อยู่คนละบรรทัด
+            let windSpeedText = windVal;
+            let windStatusText = '';
+            if (windVal.includes('(')) {
+                let parts = windVal.split('(');
+                windSpeedText = parts[0].trim();
+                windStatusText = '(' + parts[1];
+            }
+            
+            // วาดบรรทัดค่าตัวเลข (กม./ชม.)
+            text(windSpeedText, 405, 555, 14, '#0f172a', '600');
+            // วาดบรรทัดสถานะในวงเล็บ ให้อยู่ด้านล่าง
+            text(windStatusText, 405, 574, 12, '#64748b', '400');
 
             text(currentLang === 'th' ? 'วันนี้ควรทำอย่างไร?' : 'Recommended Actions:', 60, 630, 21, '#0f172a', '700');
 
