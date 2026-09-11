@@ -591,9 +591,9 @@
             <div class="trend-title">
                 <span data-i18n="trendTitle">
                     <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                    แนวโน้มค่าฝุ่นย้อนหลัง 24 ชั่วโมง
+                    แนวโน้มค่าฝุ่นรายชั่วโมง
                 </span>
-                <span style="font-size: 13px; color: var(--sub-text);" data-i18n="trendSub">รายชั่วโมง (Hourly)</span>
+                <span style="font-size: 13px; color: var(--sub-text);" id="trendDateLabel">ประจำวันที่ -</span>
             </div>
             <div class="trend-scroll-container">
                 <div class="trend-bars-24h" id="trendBars24h"></div>
@@ -658,8 +658,7 @@
                 genAd5: "หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด",
                 senAd5: "อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ",
                 calTitle: "ปฏิทินค่าฝุ่นเฉลี่ย 24 ชม.",
-                trendTitle: "แนวโน้มค่าฝุ่นย้อนหลัง 24 ชั่วโมง",
-                trendSub: "รายชั่วโมง (Hourly)",
+                trendTitle: "แนวโน้มค่าฝุ่นรายชั่วโมง",
                 service1: "คลินิกมลพิษทางอากาศ (ชั้น 2)",
                 service2: "ปรึกษาแพทย์ออนไลน์ (Telemedicine)",
                 service3: "สายด่วนโรงพยาบาลสันทราย: 053-xx-xxxx",
@@ -692,8 +691,7 @@
                 genAd5: "Avoid all outdoor activities. Seal indoor spaces.",
                 senAd5: "Hazardous! Stay in clean rooms, seek medical help immediately.",
                 calTitle: "24-hr Average PM2.5 Calendar",
-                trendTitle: "24-Hour PM2.5 Hourly Trend",
-                trendSub: "Hourly Trend",
+                trendTitle: "Hourly PM2.5 Trend",
                 service1: "Pollution Clinic (2nd Floor)",
                 service2: "Telemedicine Consultation",
                 service3: "Sansai Hospital Hotline: 053-xx-xxxx",
@@ -841,26 +839,37 @@
             const container = document.getElementById('trendBars24h');
             container.innerHTML = '';
 
-            // ใช้ข้อมูล 24 แถวล่าสุด
-            const latest24 = pmData.slice(0, 24);
-            const maxVal = Math.max(...latest24.map(d => d.value), 90);
+            if (pmData.length === 0) return;
 
-            // สร้างกราฟเรียงตามเวลา 00:00 ถึง 23:00 เสมอ
+            // 1. หา "วันที่ล่าสุด" จากข้อมูลแถวแรกสุด (วันนี้)
+            const targetDate = pmData[0].date;
+            
+            // อัปเดตข้อความวันที่บนหัวกราฟ
+            const dateLabel = document.getElementById('trendDateLabel');
+            if (dateLabel) {
+                dateLabel.innerText = currentLang === 'th' ? `ประจำวันที่ ${targetDate}` : `Date: ${targetDate}`;
+            }
+
+            // 2. กรองข้อมูลเอา **เฉพาะของวันที่ล่าสุดเท่านั้น**
+            const todayData = pmData.filter(d => d.date === targetDate);
+            const maxVal = Math.max(...todayData.map(d => d.value), 90);
+
+            // 3. สร้างกราฟล็อกแกนเวลา 00:00 ถึง 23:00 เสมอ
             for (let h = 0; h < 24; h++) {
                 let timeStr = `${String(h).padStart(2, '0')}:00`;
                 
-                // หาว่าใน 24 แถวล่าสุด มีข้อมูลของชั่วโมงนี้ไหม
-                let matchedData = latest24.find(d => {
+                // ตรวจสอบว่าในชั่วโมงนี้มีข้อมูลที่บันทึกไว้หรือไม่
+                let matchedData = todayData.find(d => {
                     let dTime = d.time.trim();
-                    if(dTime.length === 4) dTime = '0' + dTime; // เติม 0 ให้เช่น 9:00 เป็น 09:00
+                    if(dTime.length === 4) dTime = '0' + dTime; // เติม 0 เผื่อเวลาเป็น 9:00 ให้กลายเป็น 09:00
                     return dTime.startsWith(`${String(h).padStart(2, '0')}:`);
                 });
 
                 let val = matchedData ? matchedData.value : null;
-                // ถ้าไม่มีข้อมูล ให้แท่งสูงแค่ 5px เป็นช่องว่างสีเทา
+                // ถ้าไม่มีข้อมูล ให้แท่งสูงแค่ 5px (เป็นช่องว่าง)
                 let barHeight = val !== null ? Math.max(12, Math.round((val / maxVal) * 70)) : 5; 
 
-                let barColor = '#e2e8f0'; // สีเทาสำหรับช่วงเวลาที่ไม่มีข้อมูล
+                let barColor = '#e2e8f0'; // สีเทาสำหรับเวลาที่ยังมาไม่ถึง หรือไม่มีข้อมูล
                 if (val !== null) {
                     barColor = '#0ea5e9'; 
                     if (val > 75.0) barColor = '#ef4444';
@@ -873,7 +882,7 @@
                 barItem.className = 'bar-item-24h';
                 barItem.innerHTML = `
                     <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" 
-                         title="${val !== null ? `${matchedData.date} เวลา ${timeStr} น. : ${val} μg/m³` : `เวลา ${timeStr} น. : ไม่มีข้อมูล`}">
+                         title="${val !== null ? `${matchedData.date} เวลา ${timeStr} น. : ${val} μg/m³` : `เวลา ${timeStr} น. : ยังไม่มีข้อมูล`}">
                     </div>
                     <span class="bar-time">${timeStr}</span>
                 `;
@@ -923,6 +932,11 @@
                     } else {
                         el.innerText = translations[currentLang][key];
                     }
+                }
+                    // อัปเดตภาษาบนหัวกราฟรายชั่วโมง
+                const trendLabel = document.getElementById('trendDateLabel');
+                if (trendLabel && latestDataDate) {
+                    trendLabel.innerText = currentLang === 'th' ? `ประจำวันที่ ${latestDataDate}` : `Date: ${latestDataDate}`;
                 }
             });
 
