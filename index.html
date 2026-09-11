@@ -501,13 +501,15 @@
         </div>
 
         <!-- การ์ดแสดงค่า PM2.5 -->
-        <div class="aqi-card" id="aqiCard">
+        <div class="aqi-card" id="aqiCard" style="background-color: #94a3b8;"> <!-- ตั้งเป็นสีเทาตอนรอโหลด -->
             <div class="live-badge"><span data-i18n="liveSensor">ข้อมูลจาก CCDC</span></div>
-            <div class="aqi-value" id="aqiValue">--</div>
+            <div class="aqi-value" id="aqiValue">--</div> <!-- เปลี่ยนเป็นขีด -->
             <div class="aqi-unit">μg/m³ (PM2.5)</div>
-            <div class="aqi-status" id="aqiStatus">กำลังเชื่อมต่อข้อมูล...</div>
+            <div class="aqi-status" id="aqiStatus">กำลังประมวลผล...</div> <!-- ข้อความรอโหลด -->
+            
+            <div id="updateTime" style="font-size: 12px; color: rgba(255, 255, 255, 0.85); margin-top: 15px;">กำลังเชื่อมต่อข้อมูล...</div>
         </div>
-
+        
         <!-- ข้อมูลสภาพอากาศเสริม -->
         <div class="sub-info">
             <span><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg> <span id="tempInfo">-</span></span>
@@ -602,12 +604,12 @@
 
         <!-- ส่วนบริการโรงพยาบาล -->
         <div class="hospital-services">
-            <a href="#" class="service-btn">
+            <a href="https://morpromt2a.moph.go.th" target="_blank" class="service-btn">
                 <span>
                     <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                    <span data-i18n="service1">คลินิกมลพิษทางอากาศ (ชั้น 2)</span>
+                    <span data-i18n="service1">นัดหมายคลินิกมลพิษ รพ.สันทราย ผ่านหมอพร้อม</span>
                 </span>
-                <span>📍 OPD</span>
+                <span data-i18n="clickBtn">คลิก</span>
             </a>
             <a href="#" class="service-btn urgent">
                 <span>
@@ -625,7 +627,6 @@
             </a>
         </div>
 
-        <div class="update-time" id="updateTime">กำลังโหลดข้อมูลล่าสุด...</div>
     </div>
 
     <script>
@@ -659,7 +660,7 @@
                 senAd5: "อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ",
                 calTitle: "ปฏิทินค่าฝุ่นเฉลี่ย 24 ชม.",
                 trendTitle: "แนวโน้มค่าฝุ่นรายชั่วโมง",
-                service1: "คลินิกมลพิษทางอากาศ (ชั้น 2)",
+                service1: "นัดหมายคลินิกมลพิษ รพ.สันทราย ผ่านหมอพร้อม",
                 service2: "ปรึกษาแพทย์ออนไลน์ (Telemedicine)",
                 service3: "สายด่วนโรงพยาบาลสันทราย: 053-xx-xxxx",
                 clickBtn: "คลิก",
@@ -692,7 +693,7 @@
                 senAd5: "Hazardous! Stay in clean rooms, seek medical help immediately.",
                 calTitle: "24-hr Average PM2.5 Calendar",
                 trendTitle: "Hourly PM2.5 Trend",
-                service1: "Pollution Clinic (2nd Floor)",
+                service1: "Book Pollution Clinic via Mor Prom",
                 service2: "Telemedicine Consultation",
                 service3: "Sansai Hospital Hotline: 053-xx-xxxx",
                 clickBtn: "Click",
@@ -826,12 +827,13 @@
             } catch (error) {
                 console.error('Error fetching data from Google Sheets:', error);
                 document.getElementById('updateTime').innerText = currentLang === 'th' 
-                    ? 'เกิดข้อผิดพลาดในการดึงข้อมูลจากระบบ (Offline Mode)' 
-                    : 'Error fetching latest data (Offline Mode)';
-                // ค่าจำลอง (Fallback) หากโหลดชีตไม่สำเร็จ
-                updateHospitalAQI(83); 
-                latestDataDate = '11/9/2026';
-                latestDataTime = '10:00';
+                    ? 'เกิดข้อผิดพลาดในการดึงข้อมูล (Offline Mode)' 
+                    : 'Error fetching data (Offline Mode)';
+                
+                // สั่งให้การ์ดแสดงสถานะว่าดึงข้อมูลไม่สำเร็จ
+                document.getElementById('aqiValue').innerText = '--';
+                document.getElementById('aqiStatus').innerText = currentLang === 'th' ? 'ขาดการเชื่อมต่อข้อมูล' : 'Connection Lost';
+                document.getElementById('aqiCard').style.backgroundColor = '#94a3b8'; // เปลี่ยนเป็นสีเทา
             }
         }
 
