@@ -3,181 +3,1075 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PM2.5 Dashboard</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2canvas สำหรับเซฟรูปภาพ -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- PapaParse สำหรับโหลด CSV ในอนาคต -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <title>ระดับ PM2.5 ณ จุดตรวจวัด รพ.สันทราย</title>
+    <!-- Google Fonts (Sarabun) -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+        :root {
+            --bg-color: #f0f4f8;
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --sub-text: #64748b;
+            --card-bg: #f8fafc;
+            --border-color: #edf2f7;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --text-color: #f8fafc;
+            --sub-text: #94a3b8;
+            --card-bg: #334155;
+            --border-color: #475569;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Sarabun', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--container-bg);
+            width: 100%;
+            max-width: 600px;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        .toolbar-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+
+        .toolbar-btn:hover {
+            opacity: 0.8;
+        }
+
+        .emergency-banner {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            display: none;
+            border: 1px solid #fecaca;
+            text-align: center;
+        }
+
+        .hospital-header {
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .hospital-name {
+            font-size: 21px;
+            font-weight: 700;
+            color: #0077b6;
+            margin-bottom: 3px;
+        }
+
+        .location {
+            font-size: 15px;
+            color: var(--sub-text);
+        }
+
+        .aqi-card {
+            background-color: #f97316; 
+            color: #fff;
+            padding: 20px;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .aqi-value {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .aqi-unit {
+            font-size: 16px;
+            font-weight: 300;
+        }
+
+        .aqi-status {
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .sub-info {
+            display: flex;
+            justify-content: space-between;
+            background: var(--card-bg);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: var(--sub-text);
+        }
+
+        .sub-info span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .guideline-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .guideline-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: #0077b6;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .guideline-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .guideline-col {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .guideline-col h5 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 3px;
+        }
+
+        .guideline-col p {
+            font-size: 13px;
+            color: var(--sub-text);
+            line-height: 1.4;
+        }
+
+        .interactive-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .action-highlight-btn {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(3, 105, 161, 0.2);
+        }
+
+        .action-highlight-btn.export {
+            background: linear-gradient(135deg, #059669, #047857);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+        }
+
+        .action-highlight-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* ปฏิทินรายเดือน */
+        .calendar-section {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .calendar-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .calendar-selectors {
+            display: flex;
+            gap: 6px;
+        }
+
+        .calendar-selectors select {
+            background: var(--container-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Sarabun', sans-serif;
+            cursor: pointer;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+
+        .calendar-day-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--sub-text);
+            padding-bottom: 6px;
+        }
+
+        .calendar-cell {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 2px;
+            min-height: 55px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .calendar-cell.empty {
+            background: transparent;
+            border: none;
+        }
+
+        .calendar-date-num {
+            font-size: 12px;
+            color: var(--sub-text);
+            font-weight: 500;
+        }
+
+        .calendar-pm-val {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: #fff;
+            width: 100%;
+        }
+
+        /* สีตามเกณฑ์ */
+        .bg-sky { background-color: #0ea5e9; }
+        .bg-green { background-color: #10b981; }
+        .bg-yellow { background-color: #f59e0b; color: #333 !important; }
+        .bg-orange { background-color: #f97316; }
+        .bg-red { background-color: #ef4444; }
+
+        /* กราฟ 24 ชั่วโมงจริง */
+        .trend-section {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .trend-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .trend-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .trend-bars-24h {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            height: 90px;
+            padding-top: 10px;
+            min-width: 580px;
+        }
+
+        .bar-item-24h {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            font-size: 11px;
+            color: var(--sub-text);
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .bar-24h {
+            width: 16px;
+            border-radius: 4px 4px 0 0;
+            transition: height 0.3s ease;
+            position: relative;
+        }
+
+        .bar-time {
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--sub-text);
+        }
+
+        .hospital-services {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .service-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            transition: background 0.2s;
+        }
+
+        .service-btn span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .service-btn:hover {
+            background: #bae6fd;
+        }
+
+        .service-btn.urgent {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .service-btn.urgent:hover {
+            background: #fecaca;
+        }
+
+        .update-time {
+            text-align: center;
+            font-size: 13px;
+            color: var(--sub-text);
+            margin-top: 5px;
+        }
+
+        .svg-icon {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            display: inline-block;
+            vertical-align: middle;
+        }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body data-theme="light">
 
-    <div class="max-w-5xl mx-auto space-y-8">
-        
-        <!-- ส่วนหัว -->
-        <header class="text-center">
-            <h1 class="text-3xl font-bold text-slate-800">รายงานค่าฝุ่น PM2.5 รพ.สันทราย</h1>
-            <p class="text-slate-500 mt-2" id="lastUpdated">อัปเดตล่าสุด: 10 ก.ย. 2569 เวลา 16:00 น. (ข้อมูลตัวอย่าง)</p>
-        </header>
-
-        <!-- 1. การ์ดแสดงผลปัจจุบัน และ เซฟรูปภาพ -->
-        <section>
-            <div class="flex justify-between items-end mb-2">
-                <h2 class="text-xl font-bold text-slate-700">สถานการณ์ปัจจุบัน</h2>
-                <button onclick="saveAsImage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    บันทึกรูปภาพ (ส่ง LINE)
+    <div class="container">
+        <!-- แถบเครื่องมือ -->
+        <div class="top-toolbar">
+            <button class="toolbar-btn" onclick="toggleLanguage()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                <span id="langText">TH/EN</span>
+            </button>
+            <div class="toolbar-group">
+                <a href="https://www.cmuccdc.org/GQ-081" target="_blank" class="toolbar-btn">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span data-i18n="shareWeb">ข้อมูล CCDC</span>
+                </a>
+                <button class="toolbar-btn" onclick="toggleDarkMode()">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
+                    <span data-i18n="colorMode">โหมดสี</span>
                 </button>
             </div>
-            
-            <!-- Area ที่จะถูกแปลงเป็นรูปภาพ -->
-            <div id="export-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row gap-6">
-                <!-- วงกลมค่าฝุ่น -->
-                <div class="w-full md:w-1/3 bg-orange-500 rounded-xl p-6 text-center text-white flex flex-col justify-center items-center">
-                    <div class="text-sm font-medium mb-2">PM2.5 ปัจจุบัน</div>
-                    <div class="text-6xl font-bold mb-1">54.2</div>
-                    <div class="text-sm opacity-90 mb-4">μg/m³</div>
-                    <div class="text-lg font-bold bg-white/20 px-4 py-1 rounded-full">ฝุ่นสูง (สีส้ม)</div>
-                </div>
-                
-                <!-- คำแนะนำ -->
-                <div class="w-full md:w-2/3 flex flex-col justify-center gap-4">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <div class="font-bold text-slate-800 flex items-center gap-2 mb-1">
-                            <span class="text-xl">🧑</span> ประชาชนทั่วไป
-                        </div>
-                        <p class="text-sm text-slate-600">ลดระยะเวลาการทำกิจกรรมกลางแจ้ง และสวมหน้ากากป้องกันฝุ่นเมื่อออกนอกอาคาร</p>
-                    </div>
-                    <div class="bg-red-50 p-4 rounded-xl border border-red-100">
-                        <div class="font-bold text-red-800 flex items-center gap-2 mb-1">
-                            <span class="text-xl">❤️</span> กลุ่มเสี่ยง (เด็ก คนชรา หญิงตั้งครรภ์ ผู้ป่วย)
-                        </div>
-                        <p class="text-sm text-red-600">งดกิจกรรมกลางแจ้งโดยเด็ดขาด ให้อยู่ในห้องปลอดฝุ่นและเตรียมยาประจำตัวให้พร้อม</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+        </div>
 
-        <!-- 2. กราฟรายชั่วโมง 24 ชม. -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h2 class="text-xl font-bold text-slate-700 mb-4">แนวโน้ม PM2.5 รายชั่วโมง (วันนี้)</h2>
-            <div class="relative h-64 w-full">
-                <canvas id="hourlyChart"></canvas>
-            </div>
-        </section>
+        <!-- แถบแจ้งเตือนฉุกเฉิน -->
+        <div class="emergency-banner" id="emergencyBanner">
+            <span data-i18n="alertText">ประกาศเร่งด่วน: ค่าฝุ่นสูงเกินเกณฑ์อันตราย โรงพยาบาลยกระดับมาตรการคุ้มครองสุขภาพ</span>
+        </div>
 
-        <!-- 3. ปฏิทินรายวัน -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-slate-700">ปฏิทินค่าฝุ่นเฉลี่ยรายวัน</h2>
-                <div class="flex gap-2">
-                    <select class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-slate-50">
-                        <option>กันยายน</option>
-                    </select>
-                    <select class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-slate-50">
-                        <option>2569</option>
-                    </select>
-                </div>
-            </div>
-            <!-- Mockup ตารางปฏิทิน -->
-            <div class="grid grid-cols-7 gap-2 text-center text-sm">
-                <div class="font-bold text-slate-500 pb-2">จ</div><div class="font-bold text-slate-500 pb-2">อ</div><div class="font-bold text-slate-500 pb-2">พ</div><div class="font-bold text-slate-500 pb-2">พฤ</div><div class="font-bold text-slate-500 pb-2">ศ</div><div class="font-bold text-slate-500 pb-2">ส</div><div class="font-bold text-slate-500 pb-2">อา</div>
-                
-                <div class="bg-transparent h-16"></div>
-                <div class="bg-green-100 border-b-4 border-green-500 rounded p-1 h-16 flex flex-col justify-between"><span class="text-xs text-left">1</span><span class="font-bold text-green-700">12.5</span></div>
-                <div class="bg-yellow-100 border-b-4 border-yellow-500 rounded p-1 h-16 flex flex-col justify-between"><span class="text-xs text-left">2</span><span class="font-bold text-yellow-700">35.0</span></div>
-                <div class="bg-orange-100 border-b-4 border-orange-500 rounded p-1 h-16 flex flex-col justify-between"><span class="text-xs text-left">3</span><span class="font-bold text-orange-700">55.2</span></div>
-                <div class="bg-red-100 border-b-4 border-red-500 rounded p-1 h-16 flex flex-col justify-between"><span class="text-xs text-left">4</span><span class="font-bold text-red-700">82.1</span></div>
-                <div class="bg-slate-50 rounded p-1 h-16 flex flex-col justify-between opacity-50"><span class="text-xs text-left">5</span><span class="text-xs mt-auto">-</span></div>
-            </div>
-        </section>
+        <!-- ส่วนหัว รพ. -->
+        <div class="hospital-header">
+            <div class="hospital-name" data-i18n="hospitalTitle">ระดับ PM2.5 ณ จุดตรวจวัด รพ.สันทราย</div>
+            <div class="location" data-i18n="hospitalLocation">อำเภอสันทราย จังหวัดเชียงใหม่</div>
+        </div>
 
-        <!-- 4. จำนวนวันที่ฝุ่นเกิน และ เทียบบุหรี่ -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h2 class="text-xl font-bold text-slate-700">ผลกระทบต่อสุขภาพสะสม</h2>
-                <div class="flex items-center gap-2">
-                    <input type="date" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-slate-50">
-                    <span class="text-slate-400">ถึง</span>
-                    <input type="date" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-slate-50">
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-slate-50 rounded-xl p-5 border border-slate-100 flex items-center justify-between">
-                    <div>
-                        <div class="text-sm text-slate-500 font-medium mb-1">วันที่ค่าฝุ่นเกินเกณฑ์ (> 37.5)</div>
-                        <div class="text-3xl font-bold text-slate-800">45 <span class="text-base font-normal text-slate-500">วัน</span></div>
-                    </div>
-                    <div class="text-4xl">🌫️</div>
-                </div>
-                <div class="bg-slate-50 rounded-xl p-5 border border-slate-100 flex items-center justify-between">
-                    <div>
-                        <div class="text-sm text-slate-500 font-medium mb-1">เทียบเท่าการสูบบุหรี่สะสม</div>
-                        <div class="text-3xl font-bold text-slate-800">128 <span class="text-base font-normal text-slate-500">มวน</span></div>
-                    </div>
-                    <div class="text-4xl">🚬</div>
-                </div>
-            </div>
-        </section>
+        <!-- การ์ดแสดงค่า PM2.5 -->
+        <div class="aqi-card" id="aqiCard">
+            <div class="live-badge"><span data-i18n="liveSensor">ข้อมูลจาก CCDC</span></div>
+            <div class="aqi-value" id="aqiValue">83</div>
+            <div class="aqi-unit">μg/m³ (PM2.5)</div>
+            <div class="aqi-status" id="aqiStatus">ฝุ่นสูงมาก อันตราย</div>
+        </div>
 
-        <!-- 5. แบบประเมินอาการด้วยตนเอง -->
-        <section class="bg-blue-50 rounded-2xl shadow-sm border border-blue-100 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-                <h2 class="text-lg font-bold text-blue-900 mb-1">ประเมินอาการด้วยตนเอง</h2>
-                <p class="text-sm text-blue-700">กังวลเรื่องผลกระทบจากมลพิษทางอากาศ? ทำแบบประเมินความเสี่ยงเบื้องต้นของกรมอนามัย</p>
+        <!-- ข้อมูลสภาพอากาศเสริม -->
+        <div class="sub-info">
+            <span><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg> <span id="tempInfo">-</span></span>
+            <span><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg> <span id="humInfo">-</span></span>
+            <span><svg class="svg-icon" viewBox="0 0 24 24"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19 12H2"></path></svg> <span id="windInfo">-</span></span>
+        </div>
+
+        <!-- คำแนะนำการปฏิบัติตัวแยกตามกลุ่ม -->
+        <div class="guideline-box">
+            <div class="guideline-title">
+                <svg class="svg-icon" viewBox="0 0 24 24" style="color: #0077b6;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span data-i18n="guideHeader">แนวปฏิบัติและคำแนะนำด้านสุขภาพ</span>
             </div>
-            <a href="https://4health.anamai.moph.go.th/assessform" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold whitespace-nowrap transition">
-                เริ่มทำแบบประเมิน
+            <div class="guideline-grid">
+                <div class="guideline-col">
+                    <h5 data-i18n="generalPublic">ประชาชนทั่วไป</h5>
+                    <p id="generalAdvice" data-i18n="genAd5">หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด</p>
+                </div>
+                <div class="guideline-col">
+                    <h5 data-i18n="sensitiveGroup">กลุ่มเสี่ยง (เด็ก/ผู้สูงอายุ/ผู้ที่ตั้งครรภ์/ผู้ที่มีโรคประจำตัว)</h5>
+                    <p id="sensitiveAdvice" data-i18n="senAd5">อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ปุ่มประเมินอาการ & ปุ่มเซฟรูปแนวตั้ง -->
+        <div class="interactive-actions">
+            <a href="https://forms.gle/your-assessment-form-link" target="_blank" class="action-highlight-btn">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span data-i18n="selfAssess">ประเมินอาการตนเอง</span>
             </a>
-        </section>
+            <button class="action-highlight-btn export" onclick="exportPortraitImageCard()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span data-i18n="saveImg">เซฟรูปสรุป (แนวตั้ง)</span>
+            </button>
+        </div>
 
+        <!-- ปฏิทินรายเดือน -->
+        <div class="calendar-section">
+            <div class="calendar-header">
+                <h3 data-i18n="calTitle">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    ปฏิทินค่าฝุ่นเฉลี่ย 24 ชม.
+                </h3>
+                <div class="calendar-selectors">
+                    <select id="monthSelect" onchange="renderCalendar()">
+                        <option value="0" data-i18n="m1">มกราคม</option>
+                        <option value="1" data-i18n="m2">กุมภาพันธ์</option>
+                        <option value="2" data-i18n="m3">มีนาคม</option>
+                        <option value="3" data-i18n="m4">เมษายน</option>
+                        <option value="4" data-i18n="m5">พฤษภาคม</option>
+                        <option value="5" data-i18n="m6">มิถุนายน</option>
+                        <option value="6" data-i18n="m7">กรกฎาคม</option>
+                        <option value="7" data-i18n="m8">สิงหาคม</option>
+                        <option value="8" data-i18n="m9">กันยายน</option>
+                        <option value="9" data-i18n="m10">ตุลาคม</option>
+                        <option value="10" data-i18n="m11">พฤศจิกายน</option>
+                        <option value="11" data-i18n="m12">ธันวาคม</option>
+                    </select>
+                    <select id="yearSelect" onchange="renderCalendar()">
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-day-name" data-i18n="dSun">อา</div>
+                <div class="calendar-day-name" data-i18n="dMon">จ</div>
+                <div class="calendar-day-name" data-i18n="dTue">อ</div>
+                <div class="calendar-day-name" data-i18n="dWed">พ</div>
+                <div class="calendar-day-name" data-i18n="dThu">พฤ</div>
+                <div class="calendar-day-name" data-i18n="dFri">ศ</div>
+                <div class="calendar-day-name" data-i18n="dSat">ส</div>
+            </div>
+            <div class="calendar-grid" id="calendarDays" style="margin-top: 4px;"></div>
+        </div>
+
+        <!-- กราฟแนวโน้มย้อนหลัง 24 ชั่วโมงจริง -->
+        <div class="trend-section">
+            <div class="trend-title">
+                <span data-i18n="trendTitle">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    แนวโน้มค่าฝุ่นย้อนหลัง 24 ชั่วโมง
+                </span>
+                <span style="font-size: 13px; color: var(--sub-text);" data-i18n="trendSub">รายชั่วโมง (Hourly)</span>
+            </div>
+            <div class="trend-scroll-container">
+                <div class="trend-bars-24h" id="trendBars24h"></div>
+            </div>
+        </div>
+
+        <!-- ส่วนบริการโรงพยาบาล -->
+        <div class="hospital-services">
+            <a href="#" class="service-btn">
+                <span>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                    <span data-i18n="service1">คลินิกมลพิษทางอากาศ (ชั้น 2)</span>
+                </span>
+                <span>📍 OPD</span>
+            </a>
+            <a href="#" class="service-btn urgent">
+                <span>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <span data-i18n="service2">ปรึกษาแพทย์ออนไลน์ (Telemedicine)</span>
+                </span>
+                <span data-i18n="clickBtn">คลิก</span>
+            </a>
+            <a href="tel:053-xx-xxxx" class="service-btn" style="background: var(--card-bg); color: var(--text-color);">
+                <span>
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    <span data-i18n="service3">สายด่วนโรงพยาบาลสันทราย: 053-xx-xxxx</span>
+                </span>
+                <span data-i18n="callBtn">โทรด่วน</span>
+            </a>
+        </div>
+
+        <div class="update-time" id="updateTime" data-i18n="updateTimeText">อัปเดตข้อมูลล่าสุด: 11 ก.ย. 2569 เวลา 10:36 น.</div>
     </div>
 
-    <!-- Script สำหรับ Mockup กราฟ และ ระบบ Save Image -->
     <script>
-        // โค้ดสร้างกราฟแท่ง 24 ชม. (Mockup Data)
-        const ctx = document.getElementById('hourlyChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00'],
-                datasets: [{
-                    label: 'PM2.5',
-                    data: [25, 30, 35, 45, 55, 60, 50, 48, 54],
-                    backgroundColor: ['#2ECC71', '#F1C40F', '#F1C40F', '#E67E22', '#E67E22', '#E67E22', '#E67E22', '#E67E22', '#E67E22'],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
+        let currentLang = 'th';
+        let currentPmValue = 83;
+        let currentStatusText = 'ฝุ่นสูงมาก อันตราย';
 
-        // ฟังก์ชันแปลง HTML เป็นรูปภาพ
-        function saveAsImage() {
-            const card = document.getElementById('export-card');
-            // ปรับ scale เพื่อให้ภาพที่ได้มีความคมชัด
-            html2canvas(card, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `PM25_Report_${new Date().toISOString().split('T')[0]}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
+        const translations = {
+            th: {
+                shareWeb: "ข้อมูล CCDC",
+                colorMode: "โหมดสี",
+                hospitalTitle: "ระดับ PM2.5 ณ จุดตรวจวัด รพ.สันทราย",
+                hospitalLocation: "อำเภอสันทราย จังหวัดเชียงใหม่",
+                liveSensor: "ข้อมูลจาก CCDC",
+                selfAssess: "ประเมินอาการตนเอง",
+                saveImg: "เซฟรูปสรุป (แนวตั้ง)",
+                guideHeader: "แนวปฏิบัติและคำแนะนำด้านสุขภาพ",
+                generalPublic: "ประชาชนทั่วไป",
+                sensitiveGroup: "กลุ่มเสี่ยง (เด็ก/ผู้สูงอายุ/ผู้ที่ตั้งครรภ์/ผู้ที่มีโรคประจำตัว)",
+                genAd1: "ทำกิจกรรมกลางแจ้งได้ปกติ อากาศดีมาก",
+                senAd1: "ทำกิจกรรมได้ตามปกติ เฝ้าระวังเบื้องต้น",
+                genAd2: "ทำกิจกรรมกลางแจ้งได้ตามปกติ",
+                senAd2: "เฝ้าระวังสุขภาพ สวมหน้ากากเมื่อเริ่มมีอาการ",
+                genAd3: "ลดเวลากิจกรรมกลางแจ้ง ใช้อุปกรณ์ป้องกันหากจำเป็น",
+                senAd3: "งดกิจกรรมกลางแจ้ง อยู่ในห้องปลอดฝุ่น สวม N95",
+                genAd4: "งดกิจกรรมกลางแจ้ง สวมหน้ากากอนามัยกรองฝุ่น",
+                senAd4: "ห้ามออกนอกอาคารเด็ดขาด ใช้อุปกรณ์ป้องกันสูงสุด",
+                genAd5: "หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด",
+                senAd5: "อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ",
+                calTitle: "ปฏิทินค่าฝุ่นเฉลี่ย 24 ชม.",
+                trendTitle: "แนวโน้มค่าฝุ่นย้อนหลัง 24 ชั่วโมง",
+                trendSub: "รายชั่วโมง (Hourly)",
+                service1: "คลินิกมลพิษทางอากาศ (ชั้น 2)",
+                service2: "ปรึกษาแพทย์ออนไลน์ (Telemedicine)",
+                service3: "สายด่วนโรงพยาบาลสันทราย: 053-xx-xxxx",
+                clickBtn: "คลิก",
+                callBtn: "โทรด่วน",
+                updateTimeText: "อัปเดตข้อมูลล่าสุด: 11 ก.ย. 2569 เวลา 10:36 น.",
+                alertText: "ประกาศเร่งด่วน: ค่าฝุ่นสูงเกินเกณฑ์อันตราย โรงพยาบาลยกระดับมาตรการคุ้มครองสุขภาพ",
+                m1: "มกราคม", m2: "กุมภาพันธ์", m3: "มีนาคม", m4: "เมษายน", m5: "พฤษภาคม", m6: "มิถุนายน",
+                m7: "กรกฎาคม", m8: "สิงหาคม", m9: "กันยายน", m10: "ตุลาคม", m11: "พฤศจิกายน", m12: "ธันวาคม",
+                dSun: "อา", dMon: "จ", dTue: "อ", dWed: "พ", dThu: "พฤ", dFri: "ศ", dSat: "ส"
+            },
+            en: {
+                shareWeb: "CCDC Data",
+                colorMode: "Theme",
+                hospitalTitle: "PM2.5 Levels at Sansai Hospital",
+                hospitalLocation: "Sansai District, Chiang Mai",
+                liveSensor: "CCDC Data",
+                selfAssess: "Self-Assessment",
+                saveImg: "Save Image (Portrait)",
+                guideHeader: "Health Guidelines & Recommendations",
+                generalPublic: "General Public",
+                sensitiveGroup: "Sensitive Groups (Children/Elderly/Pregnant/Chronic Conditions)",
+                genAd1: "Normal outdoor activities allowed.",
+                senAd1: "Normal activities with light monitoring.",
+                genAd2: "Normal outdoor activities allowed.",
+                senAd2: "Monitor health and wear masks if sensitive.",
+                genAd3: "Reduce outdoor exertion. Use protection if needed.",
+                senAd3: "Avoid outdoors. Stay in clean rooms, wear N95.",
+                genAd4: "Avoid outdoor activities, wear dust masks.",
+                senAd4: "Strictly stay indoors with max protection.",
+                genAd5: "Avoid all outdoor activities. Seal indoor spaces.",
+                senAd5: "Hazardous! Stay in clean rooms, seek medical help immediately.",
+                calTitle: "24-hr Average PM2.5 Calendar",
+                trendTitle: "24-Hour PM2.5 Hourly Trend",
+                trendSub: "Hourly Trend",
+                service1: "Pollution Clinic (2nd Floor)",
+                service2: "Telemedicine Consultation",
+                service3: "Sansai Hospital Hotline: 053-xx-xxxx",
+                clickBtn: "Click",
+                callBtn: "Call",
+                updateTimeText: "Last updated: Sep 11, 2026 at 10:36 AM",
+                alertText: "Emergency Notice: High PM2.5 levels detected. Hospital has upgraded health safety measures.",
+                m1: "January", m2: "February", m3: "March", m4: "April", m5: "May", m6: "June",
+                m7: "July", m8: "August", m9: "September", m10: "October", m11: "November", m12: "December",
+                dSun: "Su", dMon: "Mo", dTue: "Tu", dWed: "We", dThu: "Th", dFri: "Fr", dSat: "Sa"
+            }
+        };
+
+        async function fetchWeatherData() {
+            try {
+                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=18.921244&longitude=98.994228&current=temperature_2m,relative_humidity_2m,wind_speed_10m');
+                const data = await response.json();
+                if (data && data.current) {
+                    const temp = Math.round(data.current.temperature_2m);
+                    const humidity = data.current.relative_humidity_2m;
+                    const windSpeed = Math.round(data.current.wind_speed_10m);
+
+                    let ventStatus = currentLang === 'th' ? 'ระบายอากาศต่ำ' : 'Low ventilation';
+                    if (windSpeed > 15) {
+                        ventStatus = currentLang === 'th' ? 'ระบายอากาศสูง' : 'High ventilation';
+                    } else if (windSpeed >= 5) {
+                        ventStatus = currentLang === 'th' ? 'ระบายอากาศปานกลาง' : 'Moderate ventilation';
+                    }
+
+                    document.getElementById('tempInfo').innerText = `${temp}°C`;
+                    document.getElementById('humInfo').innerText = `${humidity}%`;
+                    document.getElementById('windInfo').innerText = `${windSpeed} ${currentLang === 'th' ? 'กม./ชม.' : 'km/h'} (${ventStatus})`;
+                }
+            } catch (error) {
+                console.error('ไม่สามารถดึงข้อมูลสภาพอากาศได้:', error);
+                document.getElementById('tempInfo').innerText = '-';
+                document.getElementById('humInfo').innerText = '-';
+                document.getElementById('windInfo').innerText = '-';
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'th' ? 'en' : 'th';
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    if(el.tagName === 'H4' || el.parentElement.classList.contains('calendar-header') || el.parentElement.classList.contains('trend-title') || el.classList.contains('guideline-title')) {
+                        const iconHtml = el.querySelector('svg') ? el.querySelector('svg').outerHTML : '';
+                        el.innerHTML = iconHtml + ' ' + translations[currentLang][key];
+                    } else if(el.tagName === 'LI') {
+                        el.innerHTML = translations[currentLang][key];
+                    } else {
+                        el.innerText = translations[currentLang][key];
+                    }
+                }
+            });
+
+            updateHospitalAQI(currentPmValue);
+            renderCalendar();
+            fetchWeatherData();
+        }
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            body.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
+        }
+
+        function render24HourTrend() {
+            const container = document.getElementById('trendBars24h');
+            container.innerHTML = '';
+
+            const nowHour = 10; 
+            const data24h = [];
+
+            for (let i = 23; i >= 0; i--) {
+                let h = (nowHour - i + 24) % 24;
+                let timeStr = `${String(h).padStart(2, '0')}:00`;
+                
+                let val = Math.floor(45 + Math.sin(i / 3) * 25 + (Math.random() * 10 - 5));
+                if (val < 5) val = 8;
+                if (val > 100) val = 95;
+
+                data24h.push({ time: timeStr, value: val });
+            }
+
+            const maxVal = Math.max(...data24h.map(d => d.value), 90);
+
+            data24h.forEach(item => {
+                let barHeight = Math.max(12, Math.round((item.value / maxVal) * 70));
+                
+                let barColor = '#0ea5e9'; 
+                if (item.value > 75.0) barColor = '#ef4444';
+                else if (item.value > 37.6) barColor = '#f97316';
+                else if (item.value > 25.1) barColor = '#f59e0b';
+                else if (item.value > 15.0) barColor = '#10b981';
+
+                const barItem = document.createElement('div');
+                barItem.className = 'bar-item-24h';
+                barItem.innerHTML = `
+                    <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" title="เวลา ${item.time} น. : ${item.value} μg/m³"></div>
+                    <span class="bar-time">${item.time}</span>
+                `;
+                container.appendChild(barItem);
             });
         }
+
+        function exportPortraitImageCard() {
+            const scale = 2; // ความคมชัดสูง
+            const canvas = document.createElement('canvas');
+            canvas.width = 640 * scale; 
+            canvas.height = 1040 * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+
+            function roundedRect(x, y, w, h, r, fill, stroke = null, lineWidth = 1) {
+                ctx.beginPath();
+                ctx.roundRect(x, y, w, h, r);
+                if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+                if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.stroke(); }
+            }
+
+            function text(text, x, y, size, color, weight = '400', align = 'left') {
+                ctx.font = `${weight} ${size}px Sarabun, sans-serif`;
+                ctx.fillStyle = color;
+                ctx.textAlign = align;
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText(text, x, y);
+            }
+
+            function drawSvgIcon(type, x, y, size, color) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(size / 24, size / 24);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.fillStyle = 'none';
+
+                const p = new Path2D();
+                if (type === 'temp') {
+                    p.addPath(new Path2D("M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"));
+                } else if (type === 'humidity') {
+                    p.addPath(new Path2D("M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"));
+                } else if (type === 'wind') {
+                    p.addPath(new Path2D("M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19 12H2"));
+                }
+                ctx.stroke(p);
+                ctx.restore();
+            }
+
+            let themeColor = '#f97316';
+            let lightColor = '#ffedd5';
+            let statusText = currentLang === 'th' ? 'ฝุ่นสูงไม่ดีกับสุขภาพ' : 'Unhealthy';
+
+            if (currentPmValue <= 15.0) {
+                themeColor = '#0ea5e9'; lightColor = '#e0f2fe';
+                statusText = currentLang === 'th' ? 'อากาศดีมาก' : 'Very Good';
+            } else if (currentPmValue <= 25.0) {
+                themeColor = '#10b981'; lightColor = '#d1fae5';
+                statusText = currentLang === 'th' ? 'อากาศดี' : 'Good';
+            } else if (currentPmValue <= 37.5) {
+                themeColor = '#f59e0b'; lightColor = '#fef3c7';
+                statusText = currentLang === 'th' ? 'เริ่มมีฝุ่นสะสม' : 'Moderate';
+            } else if (currentPmValue <= 75.0) {
+                themeColor = '#f97316'; lightColor = '#ffedd5';
+                statusText = currentLang === 'th' ? 'ฝุ่นสูงไม่ดีกับสุขภาพ' : 'Unhealthy';
+            } else {
+                themeColor = '#ef4444'; lightColor = '#fee2e2';
+                statusText = currentLang === 'th' ? 'ฝุ่นสูงมาก อันตราย' : 'Hazardous';
+            }
+
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, 640);
+            bgGradient.addColorStop(0, '#eef6fb');
+            bgGradient.addColorStop(1, '#f8fafc');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, 640, 1040);
+
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = lightColor;
+            ctx.beginPath(); ctx.arc(580, 50, 140, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(40, 990, 120, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+
+            roundedRect(30, 35, 580, 970, 30, '#ffffff');
+
+            text('HEALTH & AIR QUALITY', 60, 90, 18, themeColor, '600');
+            text(currentLang === 'th' ? 'ระดับ PM2.5 ณ จุดตรวจวัด รพ.สันทราย' : 'PM2.5 Level at Sansai Hospital', 60, 130, currentLang === 'th' ? 25 : 22, '#0f172a', '700');
+            text(currentLang === 'th' ? 'อำเภอสันทราย จังหวัดเชียงใหม่' : 'Sansai District, Chiang Mai', 60, 163, 16, '#64748b', '400');
+
+            roundedRect(420, 70, 170, 38, 18, '#ecfdf5');
+            ctx.beginPath(); ctx.arc(440, 89, 6, 0, Math.PI * 2); ctx.fillStyle = '#10b981'; ctx.fill();
+            text(currentLang === 'th' ? 'ข้อมูลจาก CCDC' : 'CCDC Data', 455, 95, 14, '#047857', '600');
+
+            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(60, 182); ctx.lineTo(580, 182); ctx.stroke();
+
+            const boxWidth = 520;
+            roundedRect(60, 205, boxWidth, 275, 25, themeColor);
+            ctx.globalAlpha = 0.12; ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(60 + boxWidth - 90, 240, 120, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+
+            text('PM2.5', 90, 248, 18, '#ffffff', '600');
+            text(currentLang === 'th' ? 'ค่าฝุ่นละอองขนาดเล็ก' : 'Particulate Matter', 90, 273, 15, 'rgba(255,255,255,0.85)', '400');
+            
+            const pmValueStr = String(currentPmValue);
+            ctx.font = '700 100px Sarabun, sans-serif';
+            const pmWidth = ctx.measureText(pmValueStr).width;
+            
+            text(pmValueStr, 90, 380, 100, '#ffffff', '700');
+            text('μg/m³', 90 + pmWidth + 12, 370, 24, '#ffffff', '500');
+
+            // กรอบสีขาว (ป้ายสถานะ)
+            const badgeWidth = currentLang === 'th' ? 240 : 220;
+            const badgeX = 60 + boxWidth - badgeWidth - 20;
+            roundedRect(badgeX, 305, badgeWidth, 55, 26, '#ffffff');
+            text('●', badgeX + 18, 341, 18, themeColor, '700');
+            text(statusText, badgeX + 42, 342, currentLang === 'th' ? 18 : 16, '#0f172a', '700');
+
+            // ย้ายวันที่และเวลาขึ้นมาแสดงผลมุมล่างขวาของการ์ดแดง
+            const updateTimeStr = (document.getElementById('updateTime')?.innerText || '').replace('อัปเดตข้อมูลล่าสุด: ', '').replace('Last updated: ', '');
+            text((currentLang === 'th' ? 'อัปเดต: ' : 'Updated: ') + updateTimeStr, 550, 458, 13, 'rgba(255,255,255,0.85)', '400', 'right');
+
+            const tempVal = document.getElementById('tempInfo')?.innerText || '-';
+            const humVal = document.getElementById('humInfo')?.innerText || '-';
+            const windVal = document.getElementById('windInfo')?.innerText || '-';
+
+            roundedRect(60, 500, 520, 95, 18, '#f8fafc', '#e2e8f0', 2);
+            
+            drawSvgIcon('temp', 75, 526, 18, '#64748b');
+            text(currentLang === 'th' ? 'อุณหภูมิ' : 'Temperature', 100, 533, 13, '#64748b', '400');
+            text(tempVal, 100, 562, 18, '#0f172a', '600');
+
+            drawSvgIcon('humidity', 232, 526, 18, '#64748b');
+            text(currentLang === 'th' ? 'ความชื้น' : 'Humidity', 257, 533, 13, '#64748b', '400');
+            text(humVal, 257, 562, 18, '#0f172a', '600');
+
+            drawSvgIcon('wind', 380, 526, 18, '#64748b');
+            text(currentLang === 'th' ? 'ความเร็วลม' : 'Wind Speed', 405, 533, 13, '#64748b', '400');
+            text(windVal, 405, 562, 12, '#0f172a', '600');
+
+            text(currentLang === 'th' ? 'วันนี้ควรทำอย่างไร?' : 'Recommended Actions:', 60, 630, 21, '#0f172a', '700');
+
+            const recommendations = currentLang === 'th' 
+                ? (currentPmValue <= 25.0 ? [['✓', 'ทำกิจกรรมกลางแจ้งได้ปกติ', 'อากาศอยู่ในเกณฑ์ดีมากถึงดี'], ['✓', 'ติดตามค่าฝุ่นเป็นระยะ', 'โดยเฉพาะช่วงที่สภาพอากาศเปลี่ยนแปลง'], ['✓', 'ดูแลสุขภาพตามปกติ', 'พักผ่อนและดื่มน้ำให้เพียงพอ']] : currentPmValue <= 75.0 ? [['!', 'ปิดประตูหน้าต่างและเปิดเครื่องฟอกอากาศ', 'ป้องกันฝุ่นละอองเข้าสู่ตัวอาคาร'], ['!', 'สวมหน้ากากกรองฝุ่น', 'เมื่อจำเป็นต้องออกนอกอาคาร'], ['!', 'ลดและงดกิจกรรมกลางแจ้ง', 'กลุ่มเสี่ยงควรระวังเป็นพิเศษ']] : [['!', 'อันตรายสูงสุด! งดกิจกรรมกลางแจ้ง', 'หลีกเลี่ยงการออกนอกอาคารโดยเด็ดขาด'], ['!', 'เปิดระบบกรองอากาศสูงสุด', 'ปิดผนึกห้องและเปิดเครื่องฟอกอากาศตลอดเวลา'], ['!', 'หากมีอาการผิดปกติ', 'เช่น หายใจลำบาก แน่นหน้าอก รีบพบแพทย์ทันที']])
+                : (currentPmValue <= 25.0 ? [['✓', 'Normal outdoor activities allowed', 'Great air quality'], ['✓', 'Monitor dust levels periodically', 'Especially during weather shifts'], ['✓', 'Maintain normal health routine', 'Rest and stay hydrated']] : currentPmValue <= 75.0 ? [['!', 'Close windows and run air purifiers', 'Prevent dust entry indoors'], ['!', 'Wear dust masks', 'When going outdoors is necessary'], ['!', 'Reduce outdoor exertion', 'Sensitive groups take extra care']] : [['!', 'Hazardous! Avoid all outdoors', 'Strictly stay indoors'], ['!', 'Max air purification mode', 'Seal rooms and run purifiers constantly'], ['!', 'If experiencing symptoms', 'Seek medical help immediately']]);
+
+            let recY = 655;
+            recommendations.forEach((item) => {
+                roundedRect(60, recY, 520, 72, 14, '#f8fafc', '#e2e8f0', 1);
+                ctx.beginPath(); ctx.arc(92, recY + 36, 17, 0, Math.PI * 2); ctx.fillStyle = themeColor; ctx.fill();
+                text(item[0], 92, recY + 42, 18, '#ffffff', '700', 'center');
+                text(item[1], 125, recY + 31, 15, '#0f172a', '600');
+                text(item[2], 125, recY + 53, 13, '#64748b', '400');
+                recY += 83;
+            });
+
+            text(currentLang === 'th' ? 'อ.สันทราย จ.เชียงใหม่' : 'Sansai, Chiang Mai', 580, 965, 13, '#94a3b8', '400', 'right');
+
+            const link = document.createElement('a');
+            link.download = `Sansai_Hospital_PM25_${currentPmValue}ug_${new Date().toISOString().slice(0,10)}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.98);
+            link.click();
+        }
+
+        function renderCalendar() {
+            const month = parseInt(document.getElementById('monthSelect').value);
+            const year = parseInt(document.getElementById('yearSelect').value);
+            const container = document.getElementById('calendarDays');
+            container.innerHTML = '';
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'calendar-cell empty';
+                container.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell';
+
+                let mockPm = Math.floor(Math.sin(day + month) * 35 + 40);
+                if (mockPm < 5) mockPm = 10;
+
+                let colorClass = 'bg-sky';
+                if (mockPm > 75.0) colorClass = 'bg-red';
+                else if (mockPm > 37.6) colorClass = 'bg-orange';
+                else if (mockPm > 25.1) colorClass = 'bg-yellow';
+                else if (mockPm > 15.0) colorClass = 'bg-green';
+
+                cell.innerHTML = `
+                    <span class="calendar-date-num">${day}</span>
+                    <span class="calendar-pm-val ${colorClass}" title="ค่าเฉลี่ย 24 ชม.: ${mockPm}">${mockPm}</span>
+                `;
+                container.appendChild(cell);
+            }
+        }
+
+        function updateHospitalAQI(pm25) {
+            currentPmValue = pm25;
+            const card = document.getElementById('aqiCard');
+            const valueEl = document.getElementById('aqiValue');
+            const statusEl = document.getElementById('aqiStatus');
+            const genAdEl = document.getElementById('generalAdvice');
+            const senAdEl = document.getElementById('sensitiveAdvice');
+            const emergencyBanner = document.getElementById('emergencyBanner');
+
+            valueEl.innerText = pm25;
+
+            if (pm25 > 75.0) {
+                emergencyBanner.style.display = 'block';
+            } else {
+                emergencyBanner.style.display = 'none';
+            }
+
+            let genTextTH = "", senTextTH = "";
+            let genTextEN = "", senTextEN = "";
+
+            if (pm25 <= 15.0) {
+                card.style.backgroundColor = '#0ea5e9';
+                currentStatusText = currentLang === 'th' ? 'อากาศดีมาก' : 'Very Good';
+                genTextTH = "ทำกิจกรรมกลางแจ้งได้ปกติ อากาศดีมาก";
+                senTextTH = "ทำกิจกรรมได้ตามปกติ เฝ้าระวังเบื้องต้น";
+                genTextEN = "Normal outdoor activities. Great air quality.";
+                senTextEN = "Normal activities with light monitoring.";
+            } else if (pm25 <= 25.0) {
+                card.style.backgroundColor = '#10b981';
+                currentStatusText = currentLang === 'th' ? 'อากาศดี' : 'Good';
+                genTextTH = "ทำกิจกรรมกลางแจ้งได้ตามปกติ";
+                senTextTH = "เฝ้าระวังสุขภาพ สวมหน้ากากเมื่อเริ่มมีอาการ";
+                genTextEN = "Normal outdoor activities allowed.";
+                senTextEN = "Monitor health and wear masks if sensitive.";
+            } else if (pm25 <= 37.5) {
+                card.style.backgroundColor = '#f59e0b';
+                currentStatusText = currentLang === 'th' ? 'เริ่มมีฝุ่นสะสม' : 'Moderate';
+                genTextTH = "ลดเวลากิจกรรมกลางแจ้งระยะยาว";
+                senTextTH = "งดกิจกรรมกลางแจ้ง เลี่ยงพื้นที่แออัด";
+                genTextEN = "Reduce prolonged outdoor exertion.";
+                senTextEN = "Avoid outdoor activities, stay in filtered air.";
+            } else if (pm25 <= 75.0) {
+                card.style.backgroundColor = '#f97316';
+                currentStatusText = currentLang === 'th' ? 'ฝุ่นสูงไม่ดีกับสุขภาพ' : 'Unhealthy';
+                genTextTH = "ลดและงดกิจกรรมกลางแจ้ง สวมหน้ากากอนามัย";
+                senTextTH = "งดกิจกรรมกลางแจ้ง อยู่ในห้องปลอดฝุ่น สวม N95";
+                genTextEN = "Reduce outdoor activities & wear masks.";
+                senTextEN = "Avoid outdoors, stay in clean rooms, wear N95.";
+            } else {
+                card.style.backgroundColor = '#ef4444';
+                currentStatusText = currentLang === 'th' ? 'ฝุ่นสูงมาก อันตราย' : 'Hazardous';
+                genTextTH = "หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด";
+                senTextTH = "อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ";
+                genTextEN = "Avoid all outdoor activities. Seal indoor spaces.";
+                senTextEN = "Hazardous! Stay in clean rooms, seek medical help immediately.";
+            }
+
+            statusEl.innerText = currentStatusText;
+            if(currentLang === 'th') {
+                genAdEl.innerText = genTextTH;
+                senAdEl.innerText = senTextTH;
+            } else {
+                genAdEl.innerText = genTextEN;
+                senAdEl.innerText = senTextEN;
+            }
+        }
+
+        document.getElementById('monthSelect').value = "8"; 
+        document.getElementById('yearSelect').value = "2026";
+        renderCalendar();
+        render24HourTrend();
+        
+        fetchWeatherData();
+        updateHospitalAQI(83);
     </script>
+
 </body>
 </html>
