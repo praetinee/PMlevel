@@ -116,7 +116,7 @@
         }
 
         .aqi-card {
-            background-color: #f97316; 
+            background-color: #94a3b8; /* สีเทาเริ่มต้นรอโหลด */
             color: #fff;
             padding: 20px;
             border-radius: 14px;
@@ -503,9 +503,9 @@
         <!-- การ์ดแสดงค่า PM2.5 -->
         <div class="aqi-card" id="aqiCard">
             <div class="live-badge"><span data-i18n="liveSensor">ข้อมูลจาก CCDC</span></div>
-            <div class="aqi-value" id="aqiValue">83</div>
+            <div class="aqi-value" id="aqiValue">--</div>
             <div class="aqi-unit">μg/m³ (PM2.5)</div>
-            <div class="aqi-status" id="aqiStatus">ฝุ่นสูงมาก อันตราย</div>
+            <div class="aqi-status" id="aqiStatus">กำลังเชื่อมต่อข้อมูล...</div>
         </div>
 
         <!-- ข้อมูลสภาพอากาศเสริม -->
@@ -524,11 +524,11 @@
             <div class="guideline-grid">
                 <div class="guideline-col">
                     <h5 data-i18n="generalPublic">ประชาชนทั่วไป</h5>
-                    <p id="generalAdvice" data-i18n="genAd5">หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด</p>
+                    <p id="generalAdvice" data-i18n="genAd5">กำลังประมวลผลคำแนะนำ...</p>
                 </div>
                 <div class="guideline-col">
                     <h5 data-i18n="sensitiveGroup">กลุ่มเสี่ยง (เด็ก/ผู้สูงอายุ/ผู้ที่ตั้งครรภ์/ผู้ที่มีโรคประจำตัว)</h5>
-                    <p id="sensitiveAdvice" data-i18n="senAd5">อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ</p>
+                    <p id="sensitiveAdvice" data-i18n="senAd5">กำลังประมวลผลคำแนะนำ...</p>
                 </div>
             </div>
         </div>
@@ -625,13 +625,15 @@
             </a>
         </div>
 
-        <div class="update-time" id="updateTime" data-i18n="updateTimeText">อัปเดตข้อมูลล่าสุด: 11 ก.ย. 2569 เวลา 10:36 น.</div>
+        <div class="update-time" id="updateTime">กำลังโหลดข้อมูลล่าสุด...</div>
     </div>
 
     <script>
         let currentLang = 'th';
-        let currentPmValue = 83;
-        let currentStatusText = 'ฝุ่นสูงมาก อันตราย';
+        let currentPmValue = 0;
+        let currentStatusText = 'กำลังประมวลผล...';
+        let latestDataDate = '';
+        let latestDataTime = '';
 
         const translations = {
             th: {
@@ -663,7 +665,6 @@
                 service3: "สายด่วนโรงพยาบาลสันทราย: 053-xx-xxxx",
                 clickBtn: "คลิก",
                 callBtn: "โทรด่วน",
-                updateTimeText: "อัปเดตข้อมูลล่าสุด: 11 ก.ย. 2569 เวลา 10:36 น.",
                 alertText: "ประกาศเร่งด่วน: ค่าฝุ่นสูงเกินเกณฑ์อันตราย โรงพยาบาลยกระดับมาตรการคุ้มครองสุขภาพ",
                 m1: "มกราคม", m2: "กุมภาพันธ์", m3: "มีนาคม", m4: "เมษายน", m5: "พฤษภาคม", m6: "มิถุนายน",
                 m7: "กรกฎาคม", m8: "สิงหาคม", m9: "กันยายน", m10: "ตุลาคม", m11: "พฤศจิกายน", m12: "ธันวาคม",
@@ -698,13 +699,148 @@
                 service3: "Sansai Hospital Hotline: 053-xx-xxxx",
                 clickBtn: "Click",
                 callBtn: "Call",
-                updateTimeText: "Last updated: Sep 11, 2026 at 10:36 AM",
                 alertText: "Emergency Notice: High PM2.5 levels detected. Hospital has upgraded health safety measures.",
                 m1: "January", m2: "February", m3: "March", m4: "April", m5: "May", m6: "June",
                 m7: "July", m8: "August", m9: "September", m10: "October", m11: "November", m12: "December",
                 dSun: "Su", dMon: "Mo", dTue: "Tu", dWed: "We", dThu: "Th", dFri: "Fr", dSat: "Sa"
             }
         };
+
+        // ฟังก์ชันดึงข้อมูลจาก Google Sheets (Sheet: PM2.5 Log)
+        async function fetchGoogleSheetData() {
+            try {
+                const sheetId = '1-Une9oA0-ln6ApbhwaXFNpkniAvX7g1K9pNR800MJwQ';
+                const gid = '1935007940';
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const csvText = await response.text();
+                
+                // Parse CSV
+                const rows = csvText.split(/\r?\n/).map(row => {
+                    const cols = [];
+                    let inQuotes = false;
+                    let col = '';
+                    for (let i = 0; i < row.length; i++) {
+                        const char = row[i];
+                        if (char === '"' && row[i+1] === '"') {
+                            col += '"';
+                            i++;
+                        } else if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            cols.push(col);
+                            col = '';
+                        } else {
+                            col += char;
+                        }
+                    }
+                    cols.push(col);
+                    return cols.map(c => c.replace(/^"|"$/g, '').trim());
+                });
+
+                // ตรวจจับ Header Columns
+                let pmColIdx = 1; 
+                let dateColIdx = 2; 
+                let timeColIdx = 3; 
+                let dataStartRow = -1;
+
+                for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                    const row = rows[i];
+                    const pIdx = row.findIndex(c => c.toUpperCase() === 'PM2.5');
+                    const dIdx = row.findIndex(c => c.toUpperCase() === 'DATE');
+                    const tIdx = row.findIndex(c => c.toUpperCase() === 'TIME');
+                    
+                    if (pIdx !== -1) {
+                        pmColIdx = pIdx;
+                        if (dIdx !== -1) dateColIdx = dIdx;
+                        if (tIdx !== -1) timeColIdx = tIdx;
+                        dataStartRow = i + 1;
+                        break;
+                    }
+                }
+
+                if (dataStartRow === -1) dataStartRow = 1; // Fallback หากไม่เจอ Headers 
+
+                // วนลูปเก็บข้อมูลแถวลงไป
+                const pmData = [];
+                for (let i = dataStartRow; i < rows.length; i++) {
+                    if (rows[i].length > pmColIdx && rows[i][pmColIdx] !== '') {
+                        const val = parseFloat(rows[i][pmColIdx]);
+                        if (!isNaN(val)) {
+                            pmData.push({
+                                value: val,
+                                date: rows[i][dateColIdx] || '',
+                                time: rows[i][timeColIdx] || ''
+                            });
+                        }
+                    }
+                }
+
+                if (pmData.length > 0) {
+                    const latest = pmData[0];
+                    latestDataDate = latest.date;
+                    latestDataTime = latest.time;
+                    
+                    // นำข้อมูลล่าสุดขึ้นมาแสดงที่การ์ดหลัก
+                    updateHospitalAQI(latest.value);
+                    
+                    document.getElementById('updateTime').innerText = currentLang === 'th' 
+                        ? `อัปเดตข้อมูลล่าสุด: ${latestDataDate} เวลา ${latestDataTime} น.` 
+                        : `Last updated: ${latestDataDate} at ${latestDataTime}`;
+
+                    // ส่งชุดข้อมูลไปวาดกราฟ 24 ชั่วโมงย้อนหลัง
+                    render24HourTrendFromData(pmData);
+                } else {
+                    throw new Error('ไม่พบข้อมูลตัวเลข PM2.5 ในไฟล์ CSV');
+                }
+
+            } catch (error) {
+                console.error('Error fetching data from Google Sheets:', error);
+                document.getElementById('updateTime').innerText = currentLang === 'th' 
+                    ? 'เกิดข้อผิดพลาดในการดึงข้อมูลจากระบบ (Offline Mode)' 
+                    : 'Error fetching latest data (Offline Mode)';
+                // ค่าจำลอง (Fallback) หากโหลดชีตไม่สำเร็จ
+                updateHospitalAQI(83); 
+                latestDataDate = '11/9/2026';
+                latestDataTime = '10:00';
+            }
+        }
+
+        function render24HourTrendFromData(pmData) {
+            const container = document.getElementById('trendBars24h');
+            container.innerHTML = '';
+
+            // ดึงข้อมูลจำนวน 24 แถวล่าสุด แล้วสลับเป็น oldest to newest เพื่อแสดงจากซ้ายไปขวา
+            const data24h = pmData.slice(0, 24).reverse(); 
+            const maxVal = Math.max(...data24h.map(d => d.value), 90);
+
+            data24h.forEach(item => {
+                let barHeight = Math.max(12, Math.round((item.value / maxVal) * 70));
+                
+                let barColor = '#0ea5e9'; 
+                if (item.value > 75.0) barColor = '#ef4444';
+                else if (item.value > 37.6) barColor = '#f97316';
+                else if (item.value > 25.1) barColor = '#f59e0b';
+                else if (item.value > 15.0) barColor = '#10b981';
+
+                const barItem = document.createElement('div');
+                barItem.className = 'bar-item-24h';
+                
+                let displayTime = item.time;
+                if (displayTime.includes(':')) {
+                    const parts = displayTime.split(':');
+                    displayTime = `${parts[0].padStart(2, '0')}:${parts[1]}`;
+                }
+                
+                barItem.innerHTML = `
+                    <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" title="${item.date} ${displayTime} น. : ${item.value} μg/m³"></div>
+                    <span class="bar-time">${displayTime}</span>
+                `;
+                container.appendChild(barItem);
+            });
+        }
 
         async function fetchWeatherData() {
             try {
@@ -754,51 +890,19 @@
             updateHospitalAQI(currentPmValue);
             renderCalendar();
             fetchWeatherData();
+            
+            // อัปเดตภาษาบนป้ายบอกเวลา
+            if (latestDataDate && latestDataTime) {
+                document.getElementById('updateTime').innerText = currentLang === 'th' 
+                    ? `อัปเดตข้อมูลล่าสุด: ${latestDataDate} เวลา ${latestDataTime} น.` 
+                    : `Last updated: ${latestDataDate} at ${latestDataTime}`;
+            }
         }
 
         function toggleDarkMode() {
             const body = document.body;
             const currentTheme = body.getAttribute('data-theme');
             body.setAttribute('data-theme', currentTheme === 'light' ? 'dark' : 'light');
-        }
-
-        function render24HourTrend() {
-            const container = document.getElementById('trendBars24h');
-            container.innerHTML = '';
-
-            const nowHour = 10; 
-            const data24h = [];
-
-            for (let i = 23; i >= 0; i--) {
-                let h = (nowHour - i + 24) % 24;
-                let timeStr = `${String(h).padStart(2, '0')}:00`;
-                
-                let val = Math.floor(45 + Math.sin(i / 3) * 25 + (Math.random() * 10 - 5));
-                if (val < 5) val = 8;
-                if (val > 100) val = 95;
-
-                data24h.push({ time: timeStr, value: val });
-            }
-
-            const maxVal = Math.max(...data24h.map(d => d.value), 90);
-
-            data24h.forEach(item => {
-                let barHeight = Math.max(12, Math.round((item.value / maxVal) * 70));
-                
-                let barColor = '#0ea5e9'; 
-                if (item.value > 75.0) barColor = '#ef4444';
-                else if (item.value > 37.6) barColor = '#f97316';
-                else if (item.value > 25.1) barColor = '#f59e0b';
-                else if (item.value > 15.0) barColor = '#10b981';
-
-                const barItem = document.createElement('div');
-                barItem.className = 'bar-item-24h';
-                barItem.innerHTML = `
-                    <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" title="เวลา ${item.time} น. : ${item.value} μg/m³"></div>
-                    <span class="bar-time">${item.time}</span>
-                `;
-                container.appendChild(barItem);
-            });
         }
 
         function exportPortraitImageCard() {
@@ -908,16 +1012,17 @@
             text(pmValueStr, 90, 380, 100, '#ffffff', '700');
             text('μg/m³', 90 + pmWidth + 12, 370, 24, '#ffffff', '500');
 
-            // กรอบสีขาว (ป้ายสถานะ)
+            // กรอบสีขาว (ป้ายสถานะ) อยู่กึ่งกลางแนวตั้งกับตัวเลข
             const badgeWidth = currentLang === 'th' ? 240 : 220;
             const badgeX = 60 + boxWidth - badgeWidth - 20;
             roundedRect(badgeX, 305, badgeWidth, 55, 26, '#ffffff');
             text('●', badgeX + 18, 341, 18, themeColor, '700');
             text(statusText, badgeX + 42, 342, currentLang === 'th' ? 18 : 16, '#0f172a', '700');
 
-            // ย้ายวันที่และเวลาขึ้นมาแสดงผลมุมล่างขวาของการ์ดแดง
-            const updateTimeStr = (document.getElementById('updateTime')?.innerText || '').replace('อัปเดตข้อมูลล่าสุด: ', '').replace('Last updated: ', '');
-            text((currentLang === 'th' ? 'อัปเดต: ' : 'Updated: ') + updateTimeStr, 550, 458, 13, 'rgba(255,255,255,0.85)', '400', 'right');
+            // ย้ายข้อความอัปเดตเวลาล่าสุดเข้าไปในกรอบของการ์ดสีที่มุมล่างขวา
+            const updateTimeLabel = currentLang === 'th' ? 'อัปเดต: ' : 'Updated: ';
+            const displayTimeText = latestDataDate ? `${updateTimeLabel}${latestDataDate} ${latestDataTime}` : '';
+            text(displayTimeText, 550, 458, 13, 'rgba(255,255,255,0.85)', '400', 'right');
 
             const tempVal = document.getElementById('tempInfo')?.innerText || '-';
             const humVal = document.getElementById('humInfo')?.innerText || '-';
@@ -953,7 +1058,7 @@
                 recY += 83;
             });
 
-            text(currentLang === 'th' ? 'อ.สันทราย จ.เชียงใหม่' : 'Sansai, Chiang Mai', 580, 965, 13, '#94a3b8', '400', 'right');
+            text(currentLang === 'th' ? 'อ.สันทราย จ.เชียงใหม่' : 'Sansai, Chiang Mai', 580, 930, 13, '#94a3b8', '400', 'right');
 
             const link = document.createElement('a');
             link.download = `Sansai_Hospital_PM25_${currentPmValue}ug_${new Date().toISOString().slice(0,10)}.jpg`;
@@ -1067,10 +1172,10 @@
         document.getElementById('monthSelect').value = "8"; 
         document.getElementById('yearSelect').value = "2026";
         renderCalendar();
-        render24HourTrend();
         
+        // โหลดข้อมูลจาก Google Sheets และ Open-Meteo ทันทีเมื่อเปิดเว็บ
+        fetchGoogleSheetData();
         fetchWeatherData();
-        updateHospitalAQI(83);
     </script>
 
 </body>
