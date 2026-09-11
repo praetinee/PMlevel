@@ -841,34 +841,44 @@
             const container = document.getElementById('trendBars24h');
             container.innerHTML = '';
 
-            // ดึงข้อมูลจำนวน 24 แถวล่าสุด แล้วสลับเป็น oldest to newest เพื่อแสดงจากซ้ายไปขวา
-            const data24h = pmData.slice(0, 24).reverse(); 
-            const maxVal = Math.max(...data24h.map(d => d.value), 90);
+            // ใช้ข้อมูล 24 แถวล่าสุด
+            const latest24 = pmData.slice(0, 24);
+            const maxVal = Math.max(...latest24.map(d => d.value), 90);
 
-            data24h.forEach(item => {
-                let barHeight = Math.max(12, Math.round((item.value / maxVal) * 70));
+            // สร้างกราฟเรียงตามเวลา 00:00 ถึง 23:00 เสมอ
+            for (let h = 0; h < 24; h++) {
+                let timeStr = `${String(h).padStart(2, '0')}:00`;
                 
-                let barColor = '#0ea5e9'; 
-                if (item.value > 75.0) barColor = '#ef4444';
-                else if (item.value > 37.6) barColor = '#f97316';
-                else if (item.value > 25.1) barColor = '#f59e0b';
-                else if (item.value > 15.0) barColor = '#10b981';
+                // หาว่าใน 24 แถวล่าสุด มีข้อมูลของชั่วโมงนี้ไหม
+                let matchedData = latest24.find(d => {
+                    let dTime = d.time.trim();
+                    if(dTime.length === 4) dTime = '0' + dTime; // เติม 0 ให้เช่น 9:00 เป็น 09:00
+                    return dTime.startsWith(`${String(h).padStart(2, '0')}:`);
+                });
+
+                let val = matchedData ? matchedData.value : null;
+                // ถ้าไม่มีข้อมูล ให้แท่งสูงแค่ 5px เป็นช่องว่างสีเทา
+                let barHeight = val !== null ? Math.max(12, Math.round((val / maxVal) * 70)) : 5; 
+
+                let barColor = '#e2e8f0'; // สีเทาสำหรับช่วงเวลาที่ไม่มีข้อมูล
+                if (val !== null) {
+                    barColor = '#0ea5e9'; 
+                    if (val > 75.0) barColor = '#ef4444';
+                    else if (val > 37.6) barColor = '#f97316';
+                    else if (val > 25.1) barColor = '#f59e0b';
+                    else if (val > 15.0) barColor = '#10b981';
+                }
 
                 const barItem = document.createElement('div');
                 barItem.className = 'bar-item-24h';
-                
-                let displayTime = item.time;
-                if (displayTime.includes(':')) {
-                    const parts = displayTime.split(':');
-                    displayTime = `${parts[0].padStart(2, '0')}:${parts[1]}`;
-                }
-                
                 barItem.innerHTML = `
-                    <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" title="${item.date} ${displayTime} น. : ${item.value} μg/m³"></div>
-                    <span class="bar-time">${displayTime}</span>
+                    <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" 
+                         title="${val !== null ? `${matchedData.date} เวลา ${timeStr} น. : ${val} μg/m³` : `เวลา ${timeStr} น. : ไม่มีข้อมูล`}">
+                    </div>
+                    <span class="bar-time">${timeStr}</span>
                 `;
                 container.appendChild(barItem);
-            });
+            }
         }
 
         async function fetchWeatherData() {
