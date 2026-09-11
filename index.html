@@ -482,10 +482,10 @@
                     <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                     <span data-i18n="shareWeb">ข้อมูล CCDC</span>
                 </a>
-                <button class="toolbar-btn" onclick="toggleDarkMode()">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> 
-                    <span data-i18n="colorMode">โหมดสี</span>
-                </button>
+                <a href="https://praetinee.github.io/JanWorkspace/" class="toolbar-btn">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> 
+                    <span data-i18n="workspace">Workspace</span>
+                </a>
             </div>
         </div>
 
@@ -638,7 +638,7 @@
         const translations = {
             th: {
                 shareWeb: "ข้อมูล CCDC",
-                colorMode: "โหมดสี",
+                workspace: "Workspace",
                 hospitalTitle: "ระดับ PM2.5 ณ จุดตรวจวัด รพ.สันทราย",
                 hospitalLocation: "อำเภอสันทราย จังหวัดเชียงใหม่",
                 liveSensor: "ข้อมูลจาก CCDC",
@@ -672,7 +672,7 @@
             },
             en: {
                 shareWeb: "CCDC Data",
-                colorMode: "Theme",
+                workspace: "Workspace",
                 hospitalTitle: "PM2.5 Levels at Sansai Hospital",
                 hospitalLocation: "Sansai District, Chiang Mai",
                 liveSensor: "CCDC Data",
@@ -792,6 +792,35 @@
 
                     // ส่งชุดข้อมูลไปวาดกราฟ 24 ชั่วโมงย้อนหลัง
                     render24HourTrendFromData(pmData);
+                    // สร้างข้อมูลค่าเฉลี่ยรายวันสำหรับปฏิทิน
+                    const dailyMap = {};
+                    pmData.forEach(d => {
+                        const parts = d.date.split(/[-/]/);
+                        if (parts.length === 3) {
+                            let year, month, day;
+                            if (parts[0].length === 4) { // Format: YYYY-MM-DD
+                                year = parseInt(parts[0]);
+                                month = parseInt(parts[1]) - 1;
+                                day = parseInt(parts[2]);
+                            } else { // Format: DD/MM/YYYY
+                                day = parseInt(parts[0]);
+                                month = parseInt(parts[1]) - 1;
+                                year = parseInt(parts[2]);
+                            }
+                            const key = `${year}-${month}-${day}`;
+                            if (!dailyMap[key]) dailyMap[key] = { sum: 0, count: 0 };
+                            dailyMap[key].sum += d.value;
+                            dailyMap[key].count += 1;
+                        }
+                    });
+                    
+                    window.pmDailyAvg = {};
+                    for (let k in dailyMap) {
+                        window.pmDailyAvg[k] = Math.round(dailyMap[k].sum / dailyMap[k].count);
+                    }
+                    
+                    // สั่งให้ปฏิทินวาดใหม่ด้วยข้อมูลจริง
+                    renderCalendar();
                 } else {
                     throw new Error('ไม่พบข้อมูลตัวเลข PM2.5 ในไฟล์ CSV');
                 }
@@ -1085,19 +1114,33 @@
                 const cell = document.createElement('div');
                 cell.className = 'calendar-cell';
 
-                let mockPm = Math.floor(Math.sin(day + month) * 35 + 40);
-                if (mockPm < 5) mockPm = 10;
+                const key = `${year}-${month}-${day}`;
+                let dailyPm = null;
+                
+                // เช็คว่ามีค่าเฉลี่ยของวันนี้ในข้อมูลที่ดึงมาหรือไม่
+                if (window.pmDailyAvg && window.pmDailyAvg[key] !== undefined) {
+                    dailyPm = window.pmDailyAvg[key];
+                }
 
-                let colorClass = 'bg-sky';
-                if (mockPm > 75.0) colorClass = 'bg-red';
-                else if (mockPm > 37.6) colorClass = 'bg-orange';
-                else if (mockPm > 25.1) colorClass = 'bg-yellow';
-                else if (mockPm > 15.0) colorClass = 'bg-green';
+                if (dailyPm !== null) {
+                    let colorClass = 'bg-sky';
+                    if (dailyPm > 75.0) colorClass = 'bg-red';
+                    else if (dailyPm > 37.6) colorClass = 'bg-orange';
+                    else if (dailyPm > 25.1) colorClass = 'bg-yellow';
+                    else if (dailyPm > 15.0) colorClass = 'bg-green';
 
-                cell.innerHTML = `
-                    <span class="calendar-date-num">${day}</span>
-                    <span class="calendar-pm-val ${colorClass}" title="ค่าเฉลี่ย 24 ชม.: ${mockPm}">${mockPm}</span>
-                `;
+                    cell.innerHTML = `
+                        <span class="calendar-date-num">${day}</span>
+                        <span class="calendar-pm-val ${colorClass}" title="ค่าเฉลี่ย 24 ชม.: ${dailyPm}">${dailyPm}</span>
+                    `;
+                } else {
+                    // กรณีไม่มีข้อมูลในวันนั้น (เป็นค่าว่างสีเทา)
+                    cell.innerHTML = `
+                        <span class="calendar-date-num">${day}</span>
+                        <span class="calendar-pm-val" style="background: var(--border-color); color: var(--sub-text);" title="ไม่มีข้อมูล">-</span>
+                    `;
+                }
+                
                 container.appendChild(cell);
             }
         }
