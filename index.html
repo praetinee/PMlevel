@@ -1238,8 +1238,24 @@
         }
 
         const today = new Date();
+        const currentYear = today.getFullYear();
+        const yearSelect = document.getElementById('yearSelect');
+        
+        // ล้างตัวเลือกปีเดิมใน HTML ออกให้หมด
+        yearSelect.innerHTML = '';
+        
+        // สร้างตัวเลือกปีอัตโนมัติ ตั้งแต่ปีปัจจุบัน ย้อนหลังไปจนถึงปี 2024 (สามารถเปลี่ยนเลข 2024 ได้)
+        // หากต้องการให้มีปีล่วงหน้า 1 ปี ให้เปลี่ยน currentYear เป็น currentYear + 1
+        for (let y = currentYear; y >= 2024; y--) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.text = y;
+            yearSelect.appendChild(option);
+        }
+
+        // ตั้งค่าเดือนและปีปัจจุบันเป็นค่าเริ่มต้น
         document.getElementById('monthSelect').value = today.getMonth().toString();
-        document.getElementById('yearSelect').value = today.getFullYear().toString();
+        yearSelect.value = currentYear.toString();
         renderCalendar();
         
         // โหลดข้อมูลจาก Google Sheets และ Open-Meteo ทันทีเมื่อเปิดเว็บ
