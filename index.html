@@ -1237,8 +1237,9 @@
             }
         }
 
-        document.getElementById('monthSelect').value = "8"; 
-        document.getElementById('yearSelect').value = "2026";
+        const today = new Date();
+        document.getElementById('monthSelect').value = today.getMonth().toString();
+        document.getElementById('yearSelect').value = today.getFullYear().toString();
         renderCalendar();
         
         // โหลดข้อมูลจาก Google Sheets และ Open-Meteo ทันทีเมื่อเปิดเว็บ
