@@ -206,6 +206,16 @@
             border: 1px solid var(--border-color);
             padding: 10px;
             border-radius: 8px;
+            /* ให้หัวข้อและเนื้อความของทั้งสองคอลัมน์ใช้แถวร่วมกัน
+               หัวข้อจะสูงเท่ากันเอง เส้นคั่นจึงตรงกันเสมอ ไม่ว่าข้อความยาวกี่บรรทัด */
+            display: grid;
+            grid-template-rows: subgrid;
+            grid-row: span 2;
+        }
+
+        /* เบราว์เซอร์เก่าที่ยังไม่รองรับ subgrid ใช้การจองความสูงหัวข้อ 2 บรรทัดแทน */
+        @supports not (grid-template-rows: subgrid) {
+            .guideline-col h5 { min-height: 2.9em; }
         }
 
         .guideline-col h5 {
@@ -215,6 +225,13 @@
             margin-bottom: 4px;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 3px;
+        }
+
+        /* จอแคบให้เรียงลงมาทีละคอลัมน์ อ่านง่ายกว่าบีบสองช่อง */
+        @media (max-width: 480px) {
+            .guideline-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .guideline-col p {
