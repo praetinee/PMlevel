@@ -623,6 +623,21 @@
         let currentStatusText = 'กำลังประมวลผล...';
         let latestDataDate = '';
         let latestDataTime = '';
+        let currentGenAdvice = '';
+        let currentSenAdvice = '';
+
+        // วลีที่คร่อมด้วย ** ** จะถูกเน้นเป็นตัวหนาสีแดงเข้ม ทั้งบนหน้าเว็บและในการ์ด
+        const EM_COLOR = '#b91c1c';
+        function emphasisToHtml(str) {
+            const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return esc(str).replace(/\*\*(.+?)\*\*/g,
+                '<strong style="color:' + EM_COLOR + '">$1</strong>');
+        }
+        // แยกวลีเน้นที่อยู่หน้าสุดออกจากเนื้อความที่เหลือ
+        function splitLead(str) {
+            const m = /^\*\*(.+?)\*\*\s*/.exec(str);
+            return m ? { lead: m[1], rest: str.slice(m[0].length) } : { lead: '', rest: str };
+        }
 
         const translations = {
             th: {
@@ -647,7 +662,7 @@
                 genAd4: "งดกิจกรรมกลางแจ้ง สวมหน้ากากอนามัยกรองฝุ่น",
                 senAd4: "ห้ามออกนอกอาคารเด็ดขาด ใช้อุปกรณ์ป้องกันสูงสุด",
                 genAd5: "หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด",
-                senAd5: "อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ",
+                senAd5: "อันตรายสูงสุด อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ",
                 calTitle: "ปฏิทินค่าฝุ่นเฉลี่ย 24 ชม.",
                 trendTitle: "แนวโน้มค่าฝุ่นรายชั่วโมง",
                 service1: "นัดหมายคลินิกมลพิษ รพ.สันทราย ผ่านหมอพร้อม",
@@ -682,7 +697,7 @@
                 genAd4: "Avoid outdoor activities, wear dust masks.",
                 senAd4: "Strictly stay indoors with max protection.",
                 genAd5: "Avoid all outdoor activities. Seal indoor spaces.",
-                senAd5: "Hazardous! Stay in clean rooms, seek medical help immediately.",
+                senAd5: "Hazardous Stay in clean rooms, seek medical help immediately.",
                 calTitle: "24-hr Average PM2.5 Calendar",
                 trendTitle: "Hourly PM2.5 Trend",
                 service1: "Book Pollution Clinic via Mor Prom",
@@ -1014,8 +1029,8 @@
             const tempVal    = document.getElementById('tempInfo').innerText;
             const humVal     = document.getElementById('humInfo').innerText;
             const windRaw    = document.getElementById('windInfo').innerText;
-            const genText    = document.getElementById('generalAdvice').innerText;
-            const senText    = document.getElementById('sensitiveAdvice').innerText;
+            const genText    = currentGenAdvice || document.getElementById('generalAdvice').innerText;
+            const senText    = currentSenAdvice || document.getElementById('sensitiveAdvice').innerText;
 
             let windMain = windRaw, windSub = '';
             if (windRaw.includes('(')) {
@@ -1032,12 +1047,20 @@
             const fontOf = (size, weight) => `${weight} ${size}px ${CARD_FONT}`;
 
             // ตัดบรรทัดภาษาไทย: ตัดที่ช่องว่างหรือ "/" ก่อน ถ้าไม่มีค่อยตัดกลางคำ
-            function wrap(str, maxWidth, fontStr) {
+            function mw(str, size, weight) {
+                measure.font = fontOf(size, weight);
+                return measure.measureText(str).width;
+            }
+
+            function wrap(str, maxWidth, fontStr, firstIndent) {
+                firstIndent = firstIndent || 0;
                 measure.font = fontStr;
                 const lines = [];
                 let cur = '', brk = -1;
                 for (const ch of str) {
-                    if (cur !== '' && measure.measureText(cur + ch).width > maxWidth) {
+                    // บรรทัดแรกเหลือที่น้อยกว่า เพราะต้องเว้นให้วลีเน้น
+                    const limit = maxWidth - (lines.length === 0 ? firstIndent : 0);
+                    if (cur !== '' && measure.measureText(cur + ch).width > limit) {
                         if (brk > 0) {
                             lines.push(cur.slice(0, brk).replace(/\s+$/, ''));
                             cur = cur.slice(brk).replace(/^\s+/, '') + ch;
@@ -1047,6 +1070,7 @@
                     if (ch === ' ' || ch === '/') brk = cur.length;
                 }
                 if (cur !== '') lines.push(cur);
+                if (lines.length === 0) lines.push('');
                 return lines;
             }
 
@@ -1061,8 +1085,11 @@
             const headW = BW - 144, advW = BW - 52;
 
             const senSub  = wrap(t.sensitiveGroupList, headW, F_SUB);
-            const genAdv  = wrap(genText, advW, F_ADV);
-            const senAdv  = wrap(senText, advW, F_ADV);
+            const genLead = splitLead(genText), senLead = splitLead(senText);
+            const genLeadW = genLead.lead ? mw(genLead.lead + ' ', 25, '700') : 0;
+            const senLeadW = senLead.lead ? mw(senLead.lead + ' ', 25, '700') : 0;
+            const genAdv  = wrap(genLead.rest, advW, F_ADV, genLeadW);
+            const senAdv  = wrap(senLead.rest, advW, F_ADV, senLeadW);
             const advLines = Math.max(genAdv.length, senAdv.length);
 
             const BOT_Y = 522;
@@ -1313,7 +1340,7 @@
             const divY = BOT_Y + 26 + HEAD_ZONE + 10;
             const advY = divY + 17;
 
-            function adviceCard(x, title, titleColor, subLines, iconFn, iconTint, advLinesArr) {
+            function adviceCard(x, title, titleColor, subLines, iconFn, iconTint, advLinesArr, lead, leadW) {
                 frosted(x, BOT_Y, BW, BOT_H, 26);
 
                 // วงกลมไอคอน
@@ -1341,11 +1368,35 @@
                 ctx.stroke();
 
                 let ay = advY;
-                advLinesArr.forEach(l => { txt(l, x + 26, ay, 25, BODY, '400'); ay += ADV_LH; });
+                advLinesArr.forEach((l, i) => {
+                    let ax = x + 26;
+                    // วลีเน้นวางนำหน้าบรรทัดแรก ตัวหนาสีแดงเข้ม
+                    if (i === 0 && lead) {
+                        txt(lead, ax, ay, 25, EM_COLOR, '700');
+                        ax += leadW;
+                    }
+                    if (l) txt(l, ax, ay, 25, BODY, '400');
+                    ay += ADV_LH;
+                });
             }
 
-            adviceCard(MX, t.generalPublic, INK, [], peopleIcon, 'rgba(148,163,184,0.20)', genAdv);
-            adviceCard(MX + BW + 20, t.sensitiveGroupShort, tier.solid, senSub, heartIcon, tier.soft, senAdv);
+            adviceCard(MX, t.generalPublic, INK, [], peopleIcon, 'rgba(148,163,184,0.20)',
+                       genAdv, genLead.lead, genLeadW);
+            adviceCard(MX + BW + 20, t.sensitiveGroupShort, tier.solid, senSub, heartIcon, tier.soft,
+                       senAdv, senLead.lead, senLeadW);
+
+            // ---------- ตัดขอบมนทั้งใบ ----------
+            // ตัดเนื้อภาพให้เหลือเฉพาะในกรอบมน
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.fillStyle = '#ffffff';
+            rrPath(0, 0, W, H, 40);
+            ctx.fill();
+            // แล้วรองพื้นขาวไว้ใต้มุมที่ตัดออก
+            // (ไม่ใช้ PNG โปร่งใส เพราะไลน์บีบเป็น JPEG ตอนส่ง มุมจะกลายเป็นสีดำ)
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+            ctx.globalCompositeOperation = 'source-over';
 
             // ---------- บันทึกไฟล์ ----------
             const link = document.createElement('a');
@@ -1452,19 +1503,16 @@
                 card.style.backgroundColor = PM_COLORS[4];
                 currentStatusText = currentLang === 'th' ? 'ฝุ่นสูงมาก อันตราย' : 'Hazardous';
                 genTextTH = "หลีกเลี่ยงกิจกรรมกลางแจ้งเด็ดขาด ปิดอาคารมิดชิด";
-                senTextTH = "อันตรายสูงสุด! อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ";
+                senTextTH = "**อันตรายสูงสุด** อยู่ในห้องปลอดฝุ่นตลอดเวลา พบแพทย์ทันทีหากมีอาการ";
                 genTextEN = "Avoid all outdoor activities. Seal indoor spaces.";
-                senTextEN = "Hazardous! Stay in clean rooms, seek medical help immediately.";
+                senTextEN = "**Hazardous** Stay in clean rooms, seek medical help immediately.";
             }
 
             statusEl.innerText = currentStatusText;
-            if(currentLang === 'th') {
-                genAdEl.innerText = genTextTH;
-                senAdEl.innerText = senTextTH;
-            } else {
-                genAdEl.innerText = genTextEN;
-                senAdEl.innerText = senTextEN;
-            }
+            currentGenAdvice = currentLang === 'th' ? genTextTH : genTextEN;
+            currentSenAdvice = currentLang === 'th' ? senTextTH : senTextEN;
+            genAdEl.innerHTML = emphasisToHtml(currentGenAdvice);
+            senAdEl.innerHTML = emphasisToHtml(currentSenAdvice);
         }
 
         const today = new Date();
