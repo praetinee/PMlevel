@@ -977,7 +977,7 @@
                 barItem.className = 'bar-item-24h';
                 barItem.innerHTML = `
                     <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" 
-                         title="${val !== null ? `${dateDisplay} เวลา ${timeStr} น. : ${val} μg/m³` : `${dateDisplay} เวลา ${timeStr} น. : ยังไม่มีข้อมูล`}">
+                         title="${val !== null ? `${dateDisplay} เวลา ${timeStr} น. : ${val.toFixed(1)} μg/m³` : `${dateDisplay} เวลา ${timeStr} น. : ยังไม่มีข้อมูล`}">
                     </div>
                     <span class="bar-time">${timeStr}</span>
                 `;
@@ -1561,7 +1561,7 @@
             const senAdEl = document.getElementById('sensitiveAdvice');
             const emergencyBanner = document.getElementById('emergencyBanner');
 
-            valueEl.innerText = pm25;
+            valueEl.innerText = Number(pm25).toFixed(1);
 
             if (pm25 > 75.0) {
                 emergencyBanner.style.display = 'block';
