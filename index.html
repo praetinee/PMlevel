@@ -398,20 +398,46 @@
             display: flex;
             align-items: flex-end;
             gap: 6px;
-            height: 90px;
-            padding-top: 10px;
-            min-width: 580px;
+            height: 115px;
+            padding-top: 8px;
+            width: max-content;
         }
 
         .bar-item-24h {
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex: 1;
+            flex: 0 0 32px;
             font-size: 11px;
             color: var(--sub-text);
             height: 100%;
             justify-content: flex-end;
+        }
+
+        .day-divider {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            margin: 0 6px;
+            flex: 0 0 auto;
+        }
+
+        .day-divider-label {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--sub-text);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 4px;
+            white-space: nowrap;
+            margin-bottom: 4px;
+        }
+
+        .day-divider-line {
+            flex: 1;
+            border-left: 2px dashed #94a3b8;
         }
 
         .bar-24h {
@@ -839,7 +865,7 @@
                     
                     window.pmDailyAvg = {};
                     for (let k in dailyMap) {
-                        window.pmDailyAvg[k] = Math.round(dailyMap[k].sum / dailyMap[k].count);
+                        window.pmDailyAvg[k] = Number((dailyMap[k].sum / dailyMap[k].count).toFixed(1));
                     }
                     
                     // สั่งให้ปฏิทินวาดใหม่ด้วยข้อมูลจริง
@@ -867,46 +893,101 @@
 
             if (pmData.length === 0) return;
 
-            // 1. หา "วันที่ล่าสุด" จากข้อมูลแถวแรกสุด (วันนี้)
-            const targetDate = pmData[0].date;
-            
-            // อัปเดตข้อความวันที่บนหัวกราฟ
-            const dateLabel = document.getElementById('trendDateLabel');
-            if (dateLabel) {
-                dateLabel.innerText = currentLang === 'th' ? `ประจำวันที่ ${targetDate}` : `Date: ${targetDate}`;
+            function parseDateParts(dateStr) {
+                const parts = dateStr.split(/[-/]/);
+                if (parts.length !== 3) return null;
+                let year, month, day;
+                if (parts[0].length === 4) { // YYYY-MM-DD
+                    year = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10) - 1;
+                    day = parseInt(parts[2], 10);
+                } else { // DD/MM/YYYY
+                    day = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10) - 1;
+                    year = parseInt(parts[2], 10);
+                }
+                return { year, month, day };
             }
 
-            // 2. กรองข้อมูลเอา **เฉพาะของวันที่ล่าสุดเท่านั้น**
-            const todayData = pmData.filter(d => d.date === targetDate);
-            const maxVal = Math.max(...todayData.map(d => d.value), 90);
+            // 1. หาวันและชั่วโมงล่าสุดจากข้อมูลแถวแรกสุด
+            const latestParts = parseDateParts(pmData[0].date);
+            if (!latestParts) return;
+            const latestHour = parseInt(pmData[0].time.trim().split(':')[0], 10);
+            if (isNaN(latestHour)) return;
 
-            // 3. สร้างกราฟล็อกแกนเวลา 00:00 ถึง 23:00 เสมอ
-            for (let h = 0; h < 24; h++) {
-                let timeStr = `${String(h).padStart(2, '0')}:00`;
-                
-                // ตรวจสอบว่าในชั่วโมงนี้มีข้อมูลที่บันทึกไว้หรือไม่
-                let matchedData = todayData.find(d => {
-                    let dTime = d.time.trim();
-                    if(dTime.length === 4) dTime = '0' + dTime; // เติม 0 เผื่อเวลาเป็น 9:00 ให้กลายเป็น 09:00
-                    return dTime.startsWith(`${String(h).padStart(2, '0')}:`);
+            const latestDt = new Date(latestParts.year, latestParts.month, latestParts.day, latestHour, 0, 0);
+
+            // อัปเดตป้ายหัวกราฟ
+            const dateLabel = document.getElementById('trendDateLabel');
+            if (dateLabel) {
+                dateLabel.innerText = currentLang === 'th'
+                    ? `ย้อนหลัง 48 ชม. (ถึง ${latestDataDate} ${latestDataTime} น.)`
+                    : `Last 48 hrs (until ${latestDataDate} ${latestDataTime})`;
+            }
+
+            // 2. จัดทำตารางค้นหาข้อมูลรายชั่วโมง (เก็บค่าล่าสุดของชั่วโมงนั้น)
+            const hourlyMap = {};
+            pmData.forEach(d => {
+                const p = parseDateParts(d.date);
+                const h = parseInt(d.time.trim().split(':')[0], 10);
+                if (!p || isNaN(h)) return;
+                const key = `${p.year}-${p.month}-${p.day}-${h}`;
+                if (hourlyMap[key] === undefined) {
+                    hourlyMap[key] = d.value;
+                }
+            });
+
+            // 3. สร้างช่วงเวลาย้อนหลัง 48 ชั่วโมง (เก่าสุดอยู่ซ้าย -> ล่าสุดอยู่ขวา)
+            const slots = [];
+            for (let i = 47; i >= 0; i--) {
+                const dt = new Date(latestDt.getTime() - i * 3600 * 1000);
+                const y = dt.getFullYear();
+                const m = dt.getMonth();
+                const d = dt.getDate();
+                const h = dt.getHours();
+                const key = `${y}-${m}-${d}-${h}`;
+                slots.push({
+                    y, m, d, h,
+                    val: hourlyMap[key] !== undefined ? hourlyMap[key] : null
                 });
+            }
 
-                let val = matchedData ? matchedData.value : null;
-                // ถ้าไม่มีข้อมูล ให้แท่งสูงแค่ 5px (เป็นช่องว่าง)
-                let barHeight = val !== null ? Math.max(12, Math.round((val / maxVal) * 70)) : 5; 
+            const maxVal = Math.max(...slots.map(s => s.val !== null ? s.val : 0), 90);
 
-                // สีเทาสำหรับเวลาที่ยังมาไม่ถึง หรือไม่มีข้อมูล
-                let barColor = val !== null ? PM_COLORS[pmTierIndex(val)] : '#e2e8f0';
+            // 4. วาดแท่งกราฟพร้อมเส้นประแบ่งวันระหว่าง 23:00 กับ 00:00
+            slots.forEach((slot, index) => {
+                if (index > 0 && slot.h === 0) {
+                    const divider = document.createElement('div');
+                    divider.className = 'day-divider';
+                    const shortDate = `${String(slot.d).padStart(2, '0')}/${String(slot.m + 1).padStart(2, '0')}`;
+                    divider.innerHTML = `
+                        <span class="day-divider-label">${shortDate}</span>
+                        <div class="day-divider-line"></div>
+                    `;
+                    container.appendChild(divider);
+                }
+
+                const timeStr = `${String(slot.h).padStart(2, '0')}:00`;
+                const dateDisplay = `${String(slot.d).padStart(2, '0')}/${String(slot.m + 1).padStart(2, '0')}/${slot.y}`;
+                const val = slot.val;
+                const barHeight = val !== null ? Math.max(12, Math.round((val / maxVal) * 70)) : 5;
+                const barColor = val !== null ? PM_COLORS[pmTierIndex(val)] : '#e2e8f0';
 
                 const barItem = document.createElement('div');
                 barItem.className = 'bar-item-24h';
                 barItem.innerHTML = `
                     <div class="bar-24h" style="height: ${barHeight}px; background-color: ${barColor};" 
-                         title="${val !== null ? `${matchedData.date} เวลา ${timeStr} น. : ${val} μg/m³` : `เวลา ${timeStr} น. : ยังไม่มีข้อมูล`}">
+                         title="${val !== null ? `${dateDisplay} เวลา ${timeStr} น. : ${val} μg/m³` : `${dateDisplay} เวลา ${timeStr} น. : ยังไม่มีข้อมูล`}">
                     </div>
                     <span class="bar-time">${timeStr}</span>
                 `;
                 container.appendChild(barItem);
+            });
+
+            // เลื่อนสโครลไปขวาสุดอัตโนมัติ เพื่อให้เห็นชั่วโมงล่าสุดก่อน
+            const scrollContainer = container.parentElement;
+            if (scrollContainer) {
+                scrollContainer.scrollLeft = scrollContainer.scrollWidth;
             }
         }
 
@@ -956,7 +1037,9 @@
                     // อัปเดตภาษาบนหัวกราฟรายชั่วโมง
                 const trendLabel = document.getElementById('trendDateLabel');
                 if (trendLabel && latestDataDate) {
-                    trendLabel.innerText = currentLang === 'th' ? `ประจำวันที่ ${latestDataDate}` : `Date: ${latestDataDate}`;
+                    trendLabel.innerText = currentLang === 'th'
+                        ? `ย้อนหลัง 48 ชม. (ถึง ${latestDataDate} ${latestDataTime} น.)`
+                        : `Last 48 hrs (until ${latestDataDate} ${latestDataTime})`;
                 }
             });
 
@@ -1451,10 +1534,11 @@
 
                 if (dailyPm !== null) {
                     const colorClass = PM_CLASSES[pmTierIndex(dailyPm)];
+                    const displayPm = dailyPm.toFixed(1);
 
                     cell.innerHTML = `
                         <span class="calendar-date-num">${day}</span>
-                        <span class="calendar-pm-val ${colorClass}" title="ค่าเฉลี่ย 24 ชม.: ${dailyPm}">${dailyPm}</span>
+                        <span class="calendar-pm-val ${colorClass}" title="ค่าเฉลี่ย 24 ชม.: ${displayPm}">${displayPm}</span>
                     `;
                 } else {
                     // กรณีไม่มีข้อมูลในวันนั้น (เป็นค่าว่างสีเทา)
